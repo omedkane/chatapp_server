@@ -5,6 +5,10 @@ import DbErrorHandler from "../helpers/dbErrorHandler";
 import User, { UserModel } from "../models/user.model";
 import { hasParams } from "./shared.functions";
 import SharedResponses from "./shared.responses";
+import multer from "multer";
+import path from "path";
+import { rename, unlink } from "fs";
+import { __srcDir } from "../core/constants/directories";
 
 const create = async (request: Request, response: Response) => {
   if (
@@ -88,17 +92,84 @@ const read = (request: Request, response: Response) => {
 const update = async (request: Request, response: Response) => {
   try {
     let user = (request as RequestWithUser).profile;
+
     user = extend(user, request.body);
     user.updated = Date.now();
+
     await user.save();
+
     user.hashed_password = undefined;
     user.salt = undefined;
+
     response.json(user);
   } catch (error: any) {
     return response.status(400).json({
       error: DbErrorHandler.getErrorMessage(error),
     });
   }
+};
+
+const updateAvatar = async (request: Request, response: Response) => {
+  if (request.file === undefined) {
+    console.log("it messed here !");
+    console.log(request.files?.length);
+    console.log(request.body.avatar);
+    console.log(JSON.stringify(request.body));
+
+    return response.status(StatusCodes.BAD_REQUEST).json({
+      error: "Avatar must be a valid image file",
+    });
+  }
+
+  const imageFile = request.file;
+  const imageName = request.file.originalname;
+  const imageExt = path.extname(imageName).toLowerCase();
+  const imageNameMod = Date.now().toString() + "_" + imageName;
+
+  const imageOldPath = imageFile.path;
+  const imageNewPath = `${__srcDir}/uploads/users/avatars/${imageNameMod}`;
+
+  if (imageExt !== ".png" && imageExt !== ".jpg")
+    return unlink(imageOldPath, (error) => {
+      console.log({ error });
+
+      return response.status(StatusCodes.BAD_REQUEST).json({
+        error: "Avatar must be a valid image file",
+      });
+    });
+
+  return rename(imageOldPath, imageNewPath, async (error) => {
+    if (error) {
+      return response
+        .status(StatusCodes.BAD_REQUEST)
+        .json({
+          error: "An error occured while renaming the image !",
+        })
+        .end();
+    }
+
+    const user = (request as RequestWithUser).profile;
+    user.avatar = imageNameMod;
+
+    await user.save();
+
+    return response.status(StatusCodes.OK).json({
+      message: "success really happened !",
+    });
+  });
+};
+
+const getAvatar = async (request: Request, response: Response) => {
+  const avatar = (request as RequestWithUser).profile.avatar;
+
+  if (avatar !== null && avatar !== undefined) {
+    return response
+      .setHeader("Cross-Origin-Resource-Policy", "same-site")
+      .sendFile(__srcDir + "./uploads/users/avatars/" + avatar);
+  } else
+    return response
+      .setHeader("Cross-Origin-Resource-Policy", "same-site")
+      .sendFile(__srcDir + "/assets/images/default_avatar.png");
 };
 
 const remove = async (request: Request, response: Response) => {
@@ -115,4 +186,13 @@ const remove = async (request: Request, response: Response) => {
   }
 };
 
-export default { create, list, userById, read, update, remove };
+export default {
+  create,
+  list,
+  userById,
+  read,
+  update,
+  remove,
+  updateAvatar,
+  getAvatar,
+};

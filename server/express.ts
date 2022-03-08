@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes";
 import chatRoutes from "./routes/chat.routes";
 import groupRoutes from "./routes/group.routes";
 import userRoutes from "./routes/user.routes";
+import multer from "multer";
 
 const app = express();
 

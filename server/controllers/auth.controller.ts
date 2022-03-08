@@ -25,7 +25,11 @@ const signIn = async (request: Request, response: Response) => {
       },
       config.jwtSecret
     );
-    response.cookie("t", token, { expires: new Date(Date.now() + 9999) });
+
+    const ONE_DAY = 86400000;
+
+    response.cookie("t", token, { expires: new Date(Date.now() + ONE_DAY) });
+
     return response.json({
       token,
       user: {
@@ -60,17 +64,19 @@ const hasAuthorization = (
   response: Response,
   next: NextFunction
 ) => {
-  let req = request as RequestWithAuth;
+  const specialRequest = request as RequestWithAuth;
   
   const authorized =
-    req.profile && req.auth && req.profile._id == req.auth._id;
+    specialRequest.profile &&
+    specialRequest.auth &&
+    specialRequest.profile._id == specialRequest.auth._id;
 
-    if(!authorized){
-      return response.status(403).json({
-        error: "User is not authorized."
-      })
-    }
-    next();
+  if (!authorized) {
+    return response.status(403).json({
+      error: "User is not authorized.",
+    });
+  }
+  next();
 };
 
 export default { signIn, signOut, requireSignIn, hasAuthorization };
