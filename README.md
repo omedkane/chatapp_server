@@ -8,7 +8,7 @@ Fully written in typescript and using express.js Mongoose and MongoDB, for devel
 
 ### Run
 
-      `npm start`
+     `npm start`
 
 ### Test
 
